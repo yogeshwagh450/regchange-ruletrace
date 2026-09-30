@@ -446,49 +446,78 @@ with tab_analyst:
             st.warning("Please enter a question.")
         else:
             with st.spinner("Cortex Analyst is generating SQL..."):
-                safe_q = user_question.replace("'", "''").replace("\\", "\\\\")
-                analyst_rows = session.sql(
-                    f"""SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b',
-                    'You are a SQL expert. Given this semantic view definition, generate ONLY a Snowflake SQL query to answer the question. Return ONLY the SQL, no explanation.
+                import requests
 
-Semantic view: REGCHANGE_DB.REGCHANGE.REGCHANGE_SEMANTIC
-Tables: TRANSACTIONS (TXN_ID, ACCOUNT_ID, TXN_AMOUNT, CURRENCY_CODE, TXN_TIMESTAMP, TXN_TYPE), BACKTEST_RUNS (RUN_ID, OLD_ALERT_COUNT, NEW_ALERT_COUNT, ALERT_COUNT_DELTA, PERCENT_ALERT_CHANGE, PROPOSED_THRESHOLD_INR, ACCOUNTS_ALERTED_NEW_RULE, NEWLY_ALERTED_ACCOUNTS, CREATED_AT), REGULATORY_CONTROLS (RULE_ID, RULE_NAME, THRESHOLD_VALUE, STATUS), REVIEW_LOG (REVIEW_ID, RUN_ID, REVIEWER, DECISION, COMMENT, REVIEWED_AT)
-All tables are in schema REGCHANGE_DB.REGCHANGE. Use fully qualified table names.
+                # Get connection details from the active Snowpark session
+                sf_conn = session._conn._conn
+                token = sf_conn.rest.token
+                host = sf_conn.host
 
-Question: {safe_q}') AS result"""
-                ).collect()
-                raw_sql = analyst_rows[0][0].strip()
+                resp = requests.post(
+                    url=f"https://{host}/api/v2/cortex/analyst/message",
+                    json={
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": user_question}
+                                ],
+                            }
+                        ],
+                        "semantic_view": "REGCHANGE_DB.REGCHANGE.REGCHANGE_SEMANTIC",
+                    },
+                    headers={
+                        "Authorization": f'Snowflake Token="{token}"',
+                        "Content-Type": "application/json",
+                    },
+                    timeout=30,
+                )
 
-                # Clean up: extract SQL from potential markdown fences
-                if "```" in raw_sql:
-                    parts = raw_sql.split("```")
-                    for part in parts[1:]:
-                        cleaned_part = part.strip()
-                        if cleaned_part.upper().startswith("SQL"):
-                            cleaned_part = cleaned_part[3:].strip()
-                        if cleaned_part.upper().startswith("SELECT") or cleaned_part.upper().startswith("WITH"):
-                            raw_sql = cleaned_part.rstrip("`").strip()
-                            break
+                if resp.status_code >= 400:
+                    st.error(f"Cortex Analyst API error ({resp.status_code}): {resp.text[:500]}")
+                    st.stop()
 
-                # Remove trailing semicolons
-                raw_sql = raw_sql.rstrip(";").strip()
+                resp_json = resp.json()
 
-            st.markdown("**Generated SQL:**")
-            st.code(raw_sql, language="sql")
+            # Parse the Cortex Analyst response
+            analyst_sql = None
+            analyst_text = None
+            suggestions = None
 
-            try:
-                with st.spinner("Executing query..."):
-                    result_df = conn.query(raw_sql)
-                st.markdown("**Result:**")
-                st.dataframe(result_df, use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.error(f"Query execution failed: {e}")
-                st.caption("The AI-generated SQL may need adjustment. Try rephrasing your question.")
+            for content_block in resp_json.get("message", {}).get("content", []):
+                if content_block.get("type") == "sql":
+                    analyst_sql = content_block.get("statement", "")
+                elif content_block.get("type") == "text":
+                    analyst_text = content_block.get("text", "")
+                elif content_block.get("type") == "suggestions":
+                    suggestions = content_block.get("suggestions", [])
+
+            if analyst_text:
+                st.markdown(f"**Analyst:** {analyst_text}")
+
+            if analyst_sql:
+                st.markdown("**Generated SQL (grounded in Semantic View):**")
+                st.code(analyst_sql, language="sql")
+
+                try:
+                    with st.spinner("Executing query..."):
+                        result_df = conn.query(analyst_sql)
+                    st.markdown("**Result:**")
+                    st.dataframe(result_df, use_container_width=True, hide_index=True)
+                except Exception as e:
+                    st.error(f"Query execution failed: {e}")
+
+            if suggestions:
+                st.markdown("**Suggested questions:**")
+                for s in suggestions:
+                    st.markdown(f"- {s}")
+
+            if not analyst_sql and not analyst_text and not suggestions:
+                st.warning("Cortex Analyst returned an empty response. Try a different question.")
 
     st.divider()
     st.caption(
-        "This tab uses Snowflake Cortex to translate natural language into SQL "
-        "against the RegChange semantic view. The semantic view defines business metrics "
-        "(total transactions, alert increase, approval count) so the AI generates "
-        "consistent, governed queries."
+        "This tab uses the **Cortex Analyst REST API** with the RegChange **Semantic View**. "
+        "Unlike generic LLM SQL generation, Cortex Analyst generates queries grounded in "
+        "defined metrics, dimensions, and relationships — ensuring consistent, governed results."
     )
