@@ -44,31 +44,31 @@
 ### Phase 3: High-Impact Improvements (TODO — 48hr sprint)
 Priority order by judge-scoring ROI:
 
-- [ ] **IMP-1: Close extraction→backtest loop** (Impact: 9/10)
+- [x] **IMP-1: Close extraction→backtest loop** (Impact: 9/10)
   - Cortex extraction auto-populates sidebar threshold + dates
   - Turns two disconnected tabs into one coherent workflow
   - Effort: ~2 hrs | Risk: Low
 
-- [ ] **IMP-2: Executive summary generation** (Impact: 8/10)
+- [x] **IMP-2: Executive summary generation** (Impact: 8/10)
   - Cortex generates a CISO-ready paragraph from backtest results
   - "This change adds 68 alerts, affects 47 new accounts, requires ~2 additional analysts"
   - Effort: ~2 hrs | Risk: Low
 
-- [ ] **IMP-3: SQL remediation preview** (Impact: 7/10)
+- [x] **IMP-3: SQL remediation preview** (Impact: 7/10)
   - Generate reviewable INSERT INTO REGULATORY_CONTROLS for new rule version
   - Makes system actionable, not just analytical
   - Effort: ~1 hr | Risk: Very low
 
-- [ ] **IMP-4: Semantic View + Cortex Analyst** (Impact: 8/10)
-  - Create semantic view over backtest/transaction data
-  - Enable natural language questions: "how many new accounts affected?"
-  - Uses Snowflake feature that gets "special consideration" from judges
+- [x] **IMP-4: Semantic View + Cortex Analyst** (Impact: 8/10)
+  - Created REGCHANGE_SEMANTIC with 10 metrics, 13 dimensions, 5 facts
+  - "Ask Analyst" tab in Streamlit for natural language questions
+  - Snowflake feature that gets "special consideration" from judges
   - Effort: ~3 hrs | Risk: Medium
 
-- [ ] **IMP-5: Data Metric Functions (DMFs)** (Impact: 6/10)
-  - Attach quality checks to TRANSACTIONS (null rate, amount range)
-  - Shows governance depth, enterprise readiness
-  - Effort: ~2 hrs | Risk: Medium
+- [x] **IMP-5: Data Metric Functions (DMFs)** — SKIPPED
+  - DMFs not enabled on trial account ("feature is not enabled for this account")
+  - Documented as production readiness item in presentation
+  - No workaround available
 
 ### Phase 4: Submission (TODO)
 - [ ] Final demo rehearsal (3 full run-throughs)

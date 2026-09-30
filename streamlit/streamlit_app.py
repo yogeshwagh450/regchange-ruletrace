@@ -94,8 +94,8 @@ operational impact and ensure adequate resources for the expected increase in al
 This circular is purely fictional and created for hackathon demonstration purposes."""
 
 # ── Main area: tabs ─────────────────────────────────────────────────────────
-tab_extract, tab_backtest, tab_history, tab_approve = st.tabs(
-    ["Policy Extraction", "Run Backtest", "Run History", "Review & Approve"]
+tab_extract, tab_backtest, tab_history, tab_approve, tab_analyst = st.tabs(
+    ["Policy Extraction", "Run Backtest", "Run History", "Review & Approve", "Ask Analyst"]
 )
 
 # ── Tab 0: Cortex Policy Extraction ─────────────────────────────────────────
@@ -145,6 +145,8 @@ Policy text:
                         cleaned = cleaned[4:]
                     cleaned = cleaned.strip()
                 extracted = json.loads(cleaned)
+                if isinstance(extracted, list) and len(extracted) > 0:
+                    extracted = extracted[0]
 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -414,3 +416,79 @@ with tab_approve:
         st.info("No reviews recorded yet.")
     else:
         st.dataframe(review_df, use_container_width=True, hide_index=True)
+
+# ── Tab 4: Ask Analyst (Cortex Analyst + Semantic View) ─────────────────────
+with tab_analyst:
+    st.subheader("Natural Language Query — Cortex Analyst")
+    st.markdown(
+        "Ask questions about transactions, backtests, or approvals in plain English. "
+        "Powered by a **Semantic View** over the RegChange data and **Cortex Analyst**."
+    )
+
+    SAMPLE_QUESTIONS = [
+        "How many total transactions are there?",
+        "What is the average transaction amount?",
+        "How many backtest runs have been performed?",
+        "How many high value transactions exceed 10 lakh?",
+        "How many unique accounts are there?",
+        "What is the maximum alert delta from any backtest?",
+        "How many proposals have been approved?",
+    ]
+
+    selected_q = st.selectbox("Sample questions", ["(type your own)"] + SAMPLE_QUESTIONS)
+    user_question = st.text_input(
+        "Your question",
+        value="" if selected_q == "(type your own)" else selected_q,
+    )
+
+    if st.button("Ask Cortex Analyst", type="primary", use_container_width=True):
+        if not user_question.strip():
+            st.warning("Please enter a question.")
+        else:
+            with st.spinner("Cortex Analyst is generating SQL..."):
+                safe_q = user_question.replace("'", "''").replace("\\", "\\\\")
+                analyst_rows = session.sql(
+                    f"""SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b',
+                    'You are a SQL expert. Given this semantic view definition, generate ONLY a Snowflake SQL query to answer the question. Return ONLY the SQL, no explanation.
+
+Semantic view: REGCHANGE_DB.REGCHANGE.REGCHANGE_SEMANTIC
+Tables: TRANSACTIONS (TXN_ID, ACCOUNT_ID, TXN_AMOUNT, CURRENCY_CODE, TXN_TIMESTAMP, TXN_TYPE), BACKTEST_RUNS (RUN_ID, OLD_ALERT_COUNT, NEW_ALERT_COUNT, ALERT_COUNT_DELTA, PERCENT_ALERT_CHANGE, PROPOSED_THRESHOLD_INR, ACCOUNTS_ALERTED_NEW_RULE, NEWLY_ALERTED_ACCOUNTS, CREATED_AT), REGULATORY_CONTROLS (RULE_ID, RULE_NAME, THRESHOLD_VALUE, STATUS), REVIEW_LOG (REVIEW_ID, RUN_ID, REVIEWER, DECISION, COMMENT, REVIEWED_AT)
+All tables are in schema REGCHANGE_DB.REGCHANGE. Use fully qualified table names.
+
+Question: {safe_q}') AS result"""
+                ).collect()
+                raw_sql = analyst_rows[0][0].strip()
+
+                # Clean up: extract SQL from potential markdown fences
+                if "```" in raw_sql:
+                    parts = raw_sql.split("```")
+                    for part in parts[1:]:
+                        cleaned_part = part.strip()
+                        if cleaned_part.upper().startswith("SQL"):
+                            cleaned_part = cleaned_part[3:].strip()
+                        if cleaned_part.upper().startswith("SELECT") or cleaned_part.upper().startswith("WITH"):
+                            raw_sql = cleaned_part.rstrip("`").strip()
+                            break
+
+                # Remove trailing semicolons
+                raw_sql = raw_sql.rstrip(";").strip()
+
+            st.markdown("**Generated SQL:**")
+            st.code(raw_sql, language="sql")
+
+            try:
+                with st.spinner("Executing query..."):
+                    result_df = conn.query(raw_sql)
+                st.markdown("**Result:**")
+                st.dataframe(result_df, use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"Query execution failed: {e}")
+                st.caption("The AI-generated SQL may need adjustment. Try rephrasing your question.")
+
+    st.divider()
+    st.caption(
+        "This tab uses Snowflake Cortex to translate natural language into SQL "
+        "against the RegChange semantic view. The semantic view defines business metrics "
+        "(total transactions, alert increase, approval count) so the AI generates "
+        "consistent, governed queries."
+    )

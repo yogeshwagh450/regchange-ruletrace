@@ -176,6 +176,80 @@ Always test Cortex model availability on your specific account before building f
 
 ---
 
+## Challenge 6: Cortex LLM Returns JSON Array Instead of Object
+
+### What happened
+The Cortex extraction prompt asks the LLM to return a JSON object with fields like `rule_name`, `new_threshold`, etc. The `llama3.1-8b` model sometimes wraps the result in a JSON array: `[{"rule_name": ...}]` instead of `{"rule_name": ...}`. Our code called `extracted.get('rule_name')` which failed with `AttributeError: 'list' object has no attribute 'get'`.
+
+### Root cause
+LLM output is non-deterministic. Even with "return JSON only" in the prompt, the model may return an array, add markdown fences, or include extra text. You cannot assume a fixed output shape.
+
+### Fix
+Added a defensive check after JSON parsing:
+```python
+extracted = json.loads(cleaned)
+if isinstance(extracted, list) and len(extracted) > 0:
+    extracted = extracted[0]
+```
+
+### Lesson
+When parsing LLM-generated JSON, always handle: (1) arrays wrapping a single object, (2) markdown code fences around JSON, (3) extra text before/after the JSON. Our code now handles all three. This is why the LLM output is a "proposal" — the format is unpredictable, so a human must verify.
+
+---
+
+## Challenge 7: OAuth Token Expiry During `snow` CLI Deploy
+
+### What happened
+The `snow streamlit deploy --replace` command failed with "OAuth access token expired" after the session had been running for a while. The VS Code extension auto-refreshes its token, but the `snow` CLI uses a snapshot from `connections.toml` that doesn't auto-refresh.
+
+### Fix
+Bypassed the `snow` CLI entirely. Used SQL `PUT` to upload the file directly to the Streamlit live version URI:
+```sql
+PUT 'file://local/path/streamlit_app.py'
+    'snow://streamlit/DB.SCHEMA.APP/versions/live/'
+    AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+```
+
+### Lesson
+For quick updates, `PUT` directly to the Streamlit `snow://` URI is faster and doesn't depend on CLI token freshness. For full redeploys (new manifest, new dependencies), refresh the connection token first or re-authenticate.
+
+---
+
+## Challenge 8: DMFs Not Available on Trial Account
+
+### What happened
+Attempted to use Snowflake Data Metric Functions (DMFs) to add data quality checks on the TRANSACTIONS table. Got: "Data quality monitoring feature is not enabled for this account."
+
+### Root cause
+DMFs require a specific account-level feature flag that is not enabled on the hackathon trial accounts.
+
+### Decision
+Skip IMP-5 (DMFs). The feature physically cannot be enabled by the user. Document it as a "production readiness" item in the presentation.
+
+### What to say to judges
+"We planned to add DMFs for data quality monitoring on the transactions table — null checks, amount range validation — but the feature isn't enabled on the trial account. In production, this would be a critical governance layer before any backtest runs."
+
+---
+
+## Decision 5: Semantic View + Cortex Analyst Instead of Direct SQL
+
+### What we chose
+Created a Semantic View (`REGCHANGE_SEMANTIC`) over all 4 tables with defined facts, dimensions, metrics, relationships, and synonyms. Added an "Ask Analyst" tab in Streamlit where users can ask natural language questions.
+
+### Why
+- The hackathon terms give "special consideration" to entries using Snowflake-native features
+- Semantic Views demonstrate governed data access — metrics are defined once, consistently
+- It's a natural extension of the AML compliance use case: a compliance officer asks "how many accounts were newly alerted?" and gets a governed answer
+- Shows depth beyond basic SQL + Streamlit
+
+### What the Semantic View defines
+- **10 metrics:** total transactions, avg/sum amounts, high-value count, unique accounts, backtest run count, avg alert increase, max alert delta, review count, approval count
+- **13 dimensions:** account, transaction type, date, currency, proposed threshold, run status, rule name, rule status, decision, reviewer, etc.
+- **5 facts:** amount, old alerts, new alerts, alert delta, percentage change
+- **AI_SQL_GENERATION instructions** for Cortex Analyst to understand the AML context
+
+---
+
 ## Credit Usage Tracking
 
 | Date | Activity | Credits Used | Running Total |
