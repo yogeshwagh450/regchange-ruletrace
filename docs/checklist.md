@@ -1,0 +1,72 @@
+# RegChange Submission Checklist
+
+**Hackathon:** Snowflake CoCo CLI Hackathon 2026 - GCC Edition
+**Problem Statement:** 01 - Risk, Fraud and Regulatory Intelligence Copilot
+**Submission Deadline:** October 4, 2026, 11:59 PM IST
+
+---
+
+## Submission Requirements (from Official Terms)
+
+- [ ] **Complete profile** on hack2skill portal (name, email, phone, country)
+- [ ] **Idea submission** on the contest portal
+- [ ] **Prototype Deployed Link**: `https://app.snowflake.com/QGSNKWX/md84147/#/streamlit-apps/REGCHANGE_DB.REGCHANGE.REGCHANGE_APP`
+- [ ] **GitHub Repository URL** - `https://github.com/yogeshwagh450/regchange-ruletrace`
+- [ ] **Source code with documentation** in repo for judge review
+- [ ] **Presentation deck** (PPT or similar) outlining idea, approach, and thought process
+- [ ] **List all datasets used** (synthetic data, Snowflake Marketplace if any)
+
+## Technical Deliverables
+
+### Phase 1: Data Foundation (DONE)
+- [x] Database `REGCHANGE_DB` created
+- [x] Schema `REGCHANGE_DB.REGCHANGE` with tables
+- [x] 10,000 synthetic INR transactions seeded
+- [x] Baseline rule `AML_THRESHOLD_10L` at INR 1,000,000
+- [x] `RUN_THRESHOLD_BACKTEST` procedure validated
+- [x] Backtest metrics match expected values
+- [x] DDL/DML reference saved
+
+### Phase 2: Streamlit Prototype (DONE)
+- [x] Streamlit in Snowflake app created and deployed (container runtime)
+- [x] Policy change overview / proposal display
+- [x] Backtest trigger with configurable proposed threshold
+- [x] Impact metrics dashboard (alert counts, delta, % change, accounts)
+- [x] Approval/reject workflow (human-in-the-loop, REVIEW_LOG table)
+- [x] Prototype deployed link obtained from Snowflake
+
+### Phase 3: Polish and Submission (TODO)
+- [ ] Cortex integration (policy text extraction/summary) if time permits
+- [ ] README updated with final architecture and screenshots
+- [ ] Presentation deck prepared
+- [ ] Demo rehearsal (run through happy path twice with stable results)
+- [ ] Final commit and push to GitHub
+- [ ] Submit on hack2skill portal before deadline
+
+## Scoring Rubric Alignment
+
+| Criterion | Weight | How We Address It |
+|---|---|---|
+| Real-World Relevance | 30% | AML threshold change is a real banking/NBFC workflow |
+| Technical Execution | 40% | Snowflake-native: SQL procedures, Streamlit, versioned metadata, Cortex Code CLI usage |
+| Solution Completeness | 30% | End-to-end: policy proposal -> control mapping -> backtest -> approval |
+
+## Special Consideration Items (from Terms)
+- [ ] Snowpark usage (procedure is SQL; consider Snowpark Python if adding Cortex)
+- [x] Worksheets (Phase 1 SQL worksheet)
+- [x] Streamlit (prototype app deployed)
+- [ ] Snowflake Marketplace (optional: use if relevant dataset found)
+- [x] Cortex Code CLI (development workflow throughout)
+
+## Credit Budget
+- Trial: $400 USD
+- Monitor via: `SELECT SUM(CREDITS_USED) FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_HISTORY`
+- Keep warehouse XS, suspend when idle, avoid long-running queries
+
+## Key Dates
+- **Now - Oct 4:** Build and iterate
+- **Oct 4, 11:59 PM IST:** Submission deadline (entry cannot be changed after)
+- **Oct 5-22:** Evaluation round
+- **Oct 23:** Finalist announcement
+- **Oct 26:** Finalist induction
+- **Oct 27-30:** Grand Finale (live demo if shortlisted)
