@@ -35,13 +35,46 @@
 - [x] Approval/reject workflow (human-in-the-loop, REVIEW_LOG table)
 - [x] Prototype deployed link obtained from Snowflake
 
-### Phase 3: Polish and Submission (TODO)
-- [ ] Cortex integration (policy text extraction/summary) if time permits
-- [ ] README updated with final architecture and screenshots
-- [ ] Presentation deck prepared
-- [ ] Demo rehearsal (run through happy path twice with stable results)
-- [ ] Final commit and push to GitHub
-- [ ] Submit on hack2skill portal before deadline
+### Phase 2.5: Cortex Integration (DONE)
+- [x] Cortex LLM (llama3.1-8b) policy text extraction tab
+- [x] README updated with architecture, demo instructions
+- [x] Project explainer doc for demo prep
+- [x] Presentation outline created
+
+### Phase 3: High-Impact Improvements (TODO — 48hr sprint)
+Priority order by judge-scoring ROI:
+
+- [ ] **IMP-1: Close extraction→backtest loop** (Impact: 9/10)
+  - Cortex extraction auto-populates sidebar threshold + dates
+  - Turns two disconnected tabs into one coherent workflow
+  - Effort: ~2 hrs | Risk: Low
+
+- [ ] **IMP-2: Executive summary generation** (Impact: 8/10)
+  - Cortex generates a CISO-ready paragraph from backtest results
+  - "This change adds 68 alerts, affects 47 new accounts, requires ~2 additional analysts"
+  - Effort: ~2 hrs | Risk: Low
+
+- [ ] **IMP-3: SQL remediation preview** (Impact: 7/10)
+  - Generate reviewable INSERT INTO REGULATORY_CONTROLS for new rule version
+  - Makes system actionable, not just analytical
+  - Effort: ~1 hr | Risk: Very low
+
+- [ ] **IMP-4: Semantic View + Cortex Analyst** (Impact: 8/10)
+  - Create semantic view over backtest/transaction data
+  - Enable natural language questions: "how many new accounts affected?"
+  - Uses Snowflake feature that gets "special consideration" from judges
+  - Effort: ~3 hrs | Risk: Medium
+
+- [ ] **IMP-5: Data Metric Functions (DMFs)** (Impact: 6/10)
+  - Attach quality checks to TRANSACTIONS (null rate, amount range)
+  - Shows governance depth, enterprise readiness
+  - Effort: ~2 hrs | Risk: Medium
+
+### Phase 4: Submission (TODO)
+- [ ] Final demo rehearsal (3 full run-throughs)
+- [ ] Final git push
+- [ ] Submit on hack2skill portal
+- [ ] Presentation deck (PPT) from outline
 
 ## Scoring Rubric Alignment
 

@@ -12,6 +12,14 @@ session = conn.session()
 session.use_database("REGCHANGE_DB")
 session.use_schema("REGCHANGE")
 
+# ── Session state defaults ──────────────────────────────────────────────────
+if "extracted_threshold" not in st.session_state:
+    st.session_state.extracted_threshold = None
+if "extracted_date" not in st.session_state:
+    st.session_state.extracted_date = None
+if "last_backtest" not in st.session_state:
+    st.session_state.last_backtest = None
+
 # ── Header ──────────────────────────────────────────────────────────────────
 st.title("RegChange — Regulatory Change Impact & Control Intelligence")
 st.caption(
@@ -45,16 +53,25 @@ with st.sidebar:
 
     st.divider()
     st.header("Backtest Parameters")
+
+    # IMP-1: If Cortex extracted a threshold, use it as default
+    default_threshold = st.session_state.extracted_threshold or 500_000
+    if st.session_state.extracted_threshold:
+        st.success(f"Auto-filled from Cortex extraction")
+
     proposed = st.number_input(
         "Proposed threshold (INR)",
         min_value=50_000,
         max_value=5_000_000,
-        value=500_000,
+        value=int(default_threshold),
         step=50_000,
         format="%d",
     )
     period_start = st.date_input("Period start", value="2026-07-01")
-    period_end = st.date_input("Period end", value="2026-10-01")
+    period_end = st.date_input(
+        "Period end",
+        value=st.session_state.extracted_date or "2026-10-01",
+    )
 
 # ── Sample policy text for demo ─────────────────────────────────────────────
 SAMPLE_POLICY_TEXT = """FICTIONAL REGULATORY CIRCULAR — FOR DEMONSTRATION ONLY
@@ -121,7 +138,6 @@ Policy text:
             st.subheader("Cortex Extraction Result")
 
             try:
-                # Try to parse JSON from the response
                 cleaned = raw_result.strip()
                 if "```" in cleaned:
                     cleaned = cleaned.split("```")[1]
@@ -145,6 +161,20 @@ Policy text:
                         f"{extracted.get('new_threshold', 'N/A'):,}\n\n"
                         f"**Effective:** {extracted.get('effective_date', 'N/A')}"
                     )
+
+                # IMP-1: Store extracted values to auto-populate sidebar
+                new_thresh = extracted.get("new_threshold")
+                eff_date = extracted.get("effective_date")
+                if new_thresh and isinstance(new_thresh, (int, float)) and new_thresh > 0:
+                    st.session_state.extracted_threshold = int(new_thresh)
+                if eff_date and eff_date != "null":
+                    st.session_state.extracted_date = eff_date
+
+                st.divider()
+                st.success(
+                    "Extracted values have been applied to the **Backtest Parameters** "
+                    "in the sidebar. Review them, then switch to the **Run Backtest** tab."
+                )
                 st.caption(
                     "This extraction is an LLM proposal — a human must confirm before "
                     "the values are used for backtesting or control updates."
@@ -182,6 +212,7 @@ with tab_backtest:
         if r.get("status") == "ERROR":
             st.error(r.get("message", "Unknown error"))
         else:
+            st.session_state.last_backtest = r
             st.success(f"Backtest complete — Run ID: `{r['run_id']}`")
 
             m1, m2, m3 = st.columns(3)
@@ -204,6 +235,74 @@ with tab_backtest:
                 f"{str(r['period_start_inclusive'])[:10]} to {str(r['period_end_exclusive'])[:10]}",
             )
 
+            # ── IMP-2: Executive Summary ────────────────────────────────────
+            st.divider()
+            st.subheader("Executive Summary")
+            with st.spinner("Generating executive summary with Cortex..."):
+                summary_prompt = f"""You are a compliance analyst. Write a concise 3-4 sentence executive summary for a Chief Compliance Officer based on these AML threshold backtest results. Be specific with numbers. Do not use markdown formatting.
+
+Results:
+- Current threshold: INR {r['old_threshold']:,.0f}
+- Proposed threshold: INR {r['proposed_threshold']:,.0f}
+- Period: {str(r['period_start_inclusive'])[:10]} to {str(r['period_end_exclusive'])[:10]}
+- Baseline alerts: {r['old_alert_count']}
+- Proposed alerts: {r['new_alert_count']}
+- Additional alerts: {r['alert_count_delta']} ({pct_str} increase)
+- Total accounts flagged under new rule: {r['accounts_alerted_under_new_rule']}
+- Accounts flagged for the first time: {r['newly_alerted_accounts']}
+
+Assume each analyst reviews approximately 30 alerts per quarter."""
+                safe_summary_prompt = summary_prompt.replace("'", "''")
+                summary_rows = session.sql(
+                    f"SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b', '{safe_summary_prompt}') AS result"
+                ).collect()
+                exec_summary = summary_rows[0][0].strip()
+
+            st.info(exec_summary)
+            st.caption("Generated by Snowflake Cortex (llama3.1-8b) — review before sharing.")
+
+            # ── IMP-3: SQL Remediation Preview ──────────────────────────────
+            st.divider()
+            st.subheader("SQL Remediation Preview")
+            st.markdown(
+                "The following SQL would create the new rule version in the control catalog. "
+                "**This is a preview only** — copy and execute after approval."
+            )
+            new_version = int(rule["RULE_VERSION"]) + 1
+            remediation_sql = f"""-- Step 1: Retire the current rule version
+UPDATE REGCHANGE_DB.REGCHANGE.REGULATORY_CONTROLS
+   SET STATUS = 'SUPERSEDED',
+       ACTIVE_TO = CURRENT_DATE()
+ WHERE RULE_ID = 'AML_THRESHOLD_10L'
+   AND RULE_VERSION = {int(rule['RULE_VERSION'])}
+   AND STATUS = 'ACTIVE';
+
+-- Step 2: Insert the new rule version
+INSERT INTO REGCHANGE_DB.REGCHANGE.REGULATORY_CONTROLS (
+    RULE_ID, RULE_NAME, RULE_VERSION, PARAMETER_NAME,
+    THRESHOLD_VALUE, CURRENCY_CODE, SQL_PREDICATE,
+    STATUS, ACTIVE_FROM, SOURCE_REFERENCE
+)
+VALUES (
+    'AML_THRESHOLD_10L',
+    'AML high-value transaction threshold',
+    {new_version},
+    'TXN_AMOUNT_THRESHOLD_INR',
+    {proposed}.00,
+    'INR',
+    'TXN_AMOUNT > :THRESHOLD_VALUE',
+    'ACTIVE',
+    '{period_end}',
+    'BACKTEST_RUN:{r["run_id"]}'
+);"""
+            st.code(remediation_sql, language="sql")
+            st.caption(
+                f"This creates version {new_version} of AML_THRESHOLD_10L at "
+                f"INR {proposed:,} and retires version {int(rule['RULE_VERSION'])}. "
+                f"Source reference links back to backtest run `{r['run_id'][:8]}...`"
+            )
+
+            # ── Transaction Distribution Chart ──────────────────────────────
             st.divider()
             st.subheader("Transaction Distribution")
             dist_df = conn.query(
