@@ -250,6 +250,35 @@ Created a Semantic View (`REGCHANGE_SEMANTIC`) over all 4 tables with defined fa
 
 ---
 
+## Challenge 9: `_snowflake` Module Not Available in Container Runtime
+
+### What happened
+The Ask Analyst tab called `import _snowflake` to use `send_snow_api_request` for the Cortex Analyst REST API. Failed with `ModuleNotFoundError: No module named '_snowflake'`.
+
+### Root cause
+The `_snowflake` module is only available in **warehouse runtime** Streamlit apps. Our app uses **container runtime** (`SYSTEM_COMPUTE_POOL_CPU`), which runs in a Docker container where `_snowflake` doesn't exist.
+
+### Fix
+Used `requests.post` to call the Cortex Analyst REST API directly, authenticating with the session token from the Snowpark connection:
+```python
+sf_conn = session._conn._conn
+token = sf_conn.rest.token
+host = sf_conn.host
+resp = requests.post(
+    url=f"https://{host}/api/v2/cortex/analyst/message",
+    headers={"Authorization": f'Snowflake Token="{token}"'},
+    json={...}
+)
+```
+
+### Lesson
+Container runtime and warehouse runtime have different available modules. Container runtime has `requests` and full PyPI access but no `_snowflake`. Warehouse runtime has `_snowflake` but limited packages. Always test API calls in the actual runtime environment.
+
+### Why this matters for accuracy
+The first attempt used `Cortex COMPLETE` (generic LLM) to generate SQL — it guessed at joins and returned wrong results (0 instead of 132). The Cortex Analyst REST API uses the Semantic View's defined metrics and dimensions to generate grounded SQL (`COUNT_IF(txn_amount_value > 1000000) WHERE currency = 'INR'`), returning the correct answer (132). This is the difference between "LLM guessing at SQL" and "governed text-to-SQL."
+
+---
+
 ## Credit Usage Tracking
 
 | Date | Activity | Credits Used | Running Total |
