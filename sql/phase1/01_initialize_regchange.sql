@@ -212,6 +212,10 @@ BEGIN
        AND ACTIVE_FROM <= CURRENT_DATE()
        AND (ACTIVE_TO IS NULL OR ACTIVE_TO >= CURRENT_DATE());
 
+    -- Zero-Copy Clone: create isolated snapshot for backtest
+    CREATE OR REPLACE TRANSIENT TABLE TXN_BACKTEST_CLONE CLONE TRANSACTIONS;
+
+    -- Run backtest against the clone, not production
     SELECT
         COALESCE(COUNT_IF(TXN_AMOUNT > :v_old_threshold), 0),
         COALESCE(COUNT_IF(TXN_AMOUNT > :PROPOSED_THRESHOLD_INR), 0),
@@ -231,10 +235,13 @@ BEGIN
         :v_new_alert_count,
         :v_accounts_alerted_new_rule,
         :v_newly_alerted_accounts
-      FROM TRANSACTIONS
+      FROM TXN_BACKTEST_CLONE
      WHERE CURRENCY_CODE = 'INR'
        AND TXN_TIMESTAMP >= :PERIOD_START_NTZ
        AND TXN_TIMESTAMP < :PERIOD_END_NTZ;
+
+    -- Drop the clone immediately after use
+    DROP TABLE IF EXISTS TXN_BACKTEST_CLONE;
 
     v_alert_count_delta := v_new_alert_count - v_old_alert_count;
     v_percent_alert_change := IFF(
@@ -297,7 +304,8 @@ BEGIN
             'DEFINED'
         ),
         'accounts_alerted_under_new_rule', v_accounts_alerted_new_rule,
-        'newly_alerted_accounts', v_newly_alerted_accounts
+        'newly_alerted_accounts', v_newly_alerted_accounts,
+        'backtest_isolation', 'ZERO_COPY_CLONE'
     );
 END;
 $$;

@@ -279,6 +279,30 @@ The first attempt used `Cortex COMPLETE` (generic LLM) to generate SQL — it gu
 
 ---
 
+## Decision 6: Zero-Copy Clone for Backtest Isolation
+
+### What we chose
+The `RUN_THRESHOLD_BACKTEST` procedure now creates a transient Zero-Copy Clone of TRANSACTIONS before running the backtest, queries the clone, and drops it immediately after.
+
+### Why
+- **Data engineering best practice:** Never run experimental queries on production data
+- **Isolation:** The clone is a point-in-time snapshot — backtest results are guaranteed consistent even if production data is being updated simultaneously
+- **Snowflake-native:** Zero-Copy Clone is a signature Snowflake feature — zero additional storage cost, instant creation
+- **Auditability:** The backtest response now includes `"backtest_isolation": "ZERO_COPY_CLONE"` so audit logs prove the test was isolated
+
+### How it works
+```sql
+-- Inside the procedure:
+CREATE OR REPLACE TRANSIENT TABLE TXN_BACKTEST_CLONE CLONE TRANSACTIONS;
+-- ... run all queries against TXN_BACKTEST_CLONE ...
+DROP TABLE IF EXISTS TXN_BACKTEST_CLONE;
+```
+
+### What to say to judges
+"Every backtest runs on an isolated Zero-Copy Clone of the transaction data. The clone is created instantly with zero storage cost, used for the replay, and dropped immediately after. Production data is never touched — this is how you'd run it in a real bank."
+
+---
+
 ## Credit Usage Tracking
 
 | Date | Activity | Credits Used | Running Total |

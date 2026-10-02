@@ -217,6 +217,9 @@ with tab_backtest:
             st.session_state.last_backtest = r
             st.success(f"Backtest complete — Run ID: `{r['run_id']}`")
 
+            if r.get("backtest_isolation") == "ZERO_COPY_CLONE":
+                st.caption("Backtest ran on an isolated Zero-Copy Clone — production data was not touched.")
+
             m1, m2, m3 = st.columns(3)
             m1.metric("Baseline Alerts", f"{r['old_alert_count']:,}")
             m2.metric(

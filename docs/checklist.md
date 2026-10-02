@@ -70,11 +70,17 @@ Priority order by judge-scoring ROI:
   - Documented as production readiness item in presentation
   - No workaround available
 
-### Phase 4: Submission (TODO)
+### Phase 4: Final Polish (TODO)
+- [ ] **IMP-6: Zero-Copy Clone isolation for backtest** (Impact: 7/10)
+  - Clone TRANSACTIONS before backtest, run against clone, drop after
+  - Shows data engineering best practice — never test on production
+  - Uses signature Snowflake feature (zero additional storage)
+  - Effort: ~30 min | Risk: Low
+- [ ] Demo video (3 min screen recording of happy path) — optional but differentiating
 - [ ] Final demo rehearsal (3 full run-throughs)
 - [ ] Final git push
-- [ ] Submit on hack2skill portal
-- [ ] Presentation deck (PPT) from outline
+- [ ] Confirm hack2skill portal has all submissions
+- [ ] PPT uploaded to portal
 
 ## Scoring Rubric Alignment
 
