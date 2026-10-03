@@ -5,3 +5,15 @@ __pycache__/
 .streamlit/secrets.toml
 streamlit/output/
 .cortex/
+
+# Docs - keep only submission-relevant files in repo
+docs/RegChangeRuleTrace_Snowflake_Hackathon_2026.pptx
+docs/Prototype Submission Template*.pptx
+docs/Regchange_RuleTrace-architecture-diagram.drawio
+docs/ppt-content.md
+docs/presentation-outline.md
+docs/decision-brief.md
+docs/submission-speaker-notes.md
+docs/project-explainer.md
+docs/checklist.md
+~$*.pptx
