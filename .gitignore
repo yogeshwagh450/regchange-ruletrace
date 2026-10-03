@@ -5,6 +5,7 @@ __pycache__/
 .streamlit/secrets.toml
 streamlit/output/
 .cortex/
+.github/prompts/resume-regchange.prompt.md
 
 # Docs - keep only submission-relevant files in repo
 docs/RegChangeRuleTrace_Snowflake_Hackathon_2026.pptx
