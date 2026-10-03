@@ -234,7 +234,8 @@ with tab_backtest:
 
             m4, m5, m6 = st.columns(3)
             m4.metric("Accounts Alerted (new rule)", f"{r['accounts_alerted_under_new_rule']:,}")
-            m5.metric("Newly Alerted Accounts", f"{r['newly_alerted_accounts']:,}")
+            m5.metric("Accounts with New Alerts", f"{r['newly_alerted_accounts']:,}",
+                       help="Accounts with transactions in the newly monitored band (proposed–baseline). Some may also have alerts under the current rule.")
             m6.metric(
                 "Replay Period",
                 f"{str(r['period_start_inclusive'])[:10]} to {str(r['period_end_exclusive'])[:10]}",

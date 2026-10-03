@@ -162,5 +162,5 @@ All data is **synthetic**, generated deterministically within the Phase 1 SQL sc
 ## Limitations and Future Work
 
 - **Current scope:** Single threshold-change scenario with synthetic data
-- **Not included:** Real regulatory document parsing, multi-regulator support, enterprise-wide lineage discovery, automatic rule promotion
-- **Future:** Cortex-powered policy text extraction, Dynamic Tables for continuous impact monitoring, DMFs for data quality checks, transient clones for safe rule testing
+- **Not included:** Real regulatory document parsing (PDF ingestion), multi-regulator support, enterprise-wide lineage discovery, automatic rule promotion
+- **Future:** Dynamic Tables for continuous impact monitoring, DMFs for data quality checks (not available on trial account), Cortex Search for policy document library, multi-regulator circular support (RBI, SEBI, IRDAI)
