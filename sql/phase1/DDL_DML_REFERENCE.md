@@ -109,4 +109,6 @@ CALL REGCHANGE_DB.REGCHANGE.RUN_THRESHOLD_BACKTEST(
 | Alert count delta | 68 |
 | Percentage alert change | 51.5152% |
 | Accounts alerted under new rule | 50 |
-| Newly alerted accounts | 47 |
+| Accounts with transactions in the newly monitored amount band | 47 |
+
+The legacy `NEWLY_ALERTED_ACCOUNTS` column holds this band-account measure, not first-time alerted accounts. Some already have baseline alerts. In the unchanged seed, the baseline and proposed rules alert the same 50 accounts; local account-set comparison gives zero first-time accounts.

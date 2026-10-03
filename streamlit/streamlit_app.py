@@ -255,9 +255,13 @@ Results:
 - Proposed alerts: {r['new_alert_count']}
 - Additional alerts: {r['alert_count_delta']} ({pct_str} increase)
 - Total accounts flagged under new rule: {r['accounts_alerted_under_new_rule']}
-- Accounts flagged for the first time: {r['newly_alerted_accounts']}
+- Accounts with transactions above the proposed threshold and at or below the baseline: {r['newly_alerted_accounts']}
 
-Assume each analyst reviews approximately 30 alerts per quarter."""
+This last metric counts accounts with transactions in the newly monitored amount band.
+Some of these accounts already have alerts under the baseline. Do not describe them
+as first-time alerted accounts or new customers. Report observed historical results,
+not predicted future workload. Do not estimate staffing, hiring, customer complaints
+or review capacity because no supporting assumptions or measurements are provided."""
                 safe_summary_prompt = summary_prompt.replace("'", "''")
                 summary_rows = session.sql(
                     f"SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b', '{safe_summary_prompt}') AS result"

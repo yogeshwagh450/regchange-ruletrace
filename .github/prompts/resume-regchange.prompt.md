@@ -15,18 +15,18 @@ Demonstrate an auditable regulatory-change workflow for a fictional AML transact
 
 - Workspace root: `C:\Users\YogeshWagh\Projects\snowflake-coco-project`
 - Project overview and Phase 1 run steps: [README](../../README.md)
-- Hackathon fit, MVP, and architecture decision: [decision brief](../../docs/decision-brief.md)
+- Implementation decisions: [engineering log](../../docs/challenges-and-decisions.md)
 - Phase 1 worksheet: [initialization and backtest SQL](../../sql/phase1/01_initialize_regchange.sql)
-- The local Git repository is on `main`, with `origin` set to `https://github.com/yogeshwagh450/regchange-ruletrace.git`. Commit `e26a115` (`Initialize RegChange RuleTrace`) was verified on both `main` and `origin/main` on 2026-09-30. The working tree had an untracked `.github/` directory at that check; do not assume this prompt is published.
+- The local Git repository is on `main`, with `origin` set to `https://github.com/yogeshwagh450/regchange-ruletrace.git`. Remote and local commit `6dad93e` were verified on 2026-10-03 before subsequent local presentation/documentation corrections. Check current status before committing; do not assume later edits are published.
 - Phase 1 SQL creates schema `REGCHANGE`, 10,000 deterministic synthetic INR transactions, the active `AML_THRESHOLD_10L` baseline at INR 1,000,000, and `RUN_THRESHOLD_BACKTEST` with persisted run metrics.
-- A local arithmetic sanity check predicts 132 baseline alerts, 200 proposed alerts at INR 500,000, 68 additional alerts (51.5152%), 50 accounts alerted under the proposed rule, and 47 newly alerted accounts.
-- The SQL has not yet been executed or compiled in the user's Snowflake trial. The user has opened Snowsight for the trial and believes the VS Code Snowflake extension is now connected, but that connection has not been independently verified. First confirm the active account/session, role, database, and warehouse, then run the worksheet and compare results. Do not claim successful execution until confirmed.
+- The unchanged synthetic fixture gives 132 baseline alerts, 200 proposed alerts at INR 500,000, 68 additional alerts (51.5152%), 50 proposed-alert accounts and 47 accounts with transactions in the newly monitored amount band. These 47 are not first-time accounts; local account-set comparison gives zero first-time accounts. The legacy SQL field name remains NEWLY_ALERTED_ACCOUNTS.
+- The user reports a deployed five-tab app and prior successful tests; DDL_DML_REFERENCE records earlier validation. This editing session did not execute Snowflake or revalidate deployment. Source now contains Semantic View setup, clone replay and a corrected summary prompt. Verify deployed behavior before recording, rather than rebuilding or reseeding.
 
 ## Journey Handoff
 
 - This is a solo hackathon project. The personal public GitHub repository is `https://github.com/yogeshwagh450/regchange-ruletrace`; the submission challenge is **Risk, Fraud and Regulatory Intelligence Copilot**.
-- The submission form requires both the GitHub repository URL and a separate **Prototype Deployed Link**. No prototype has been built or deployed yet; do not put the repository URL in both fields or claim a deployment.
-- The immediate blocker is validating `sql/phase1/01_initialize_regchange.sql` in Snowflake. Once it succeeds, build the smallest usable demo, preferably a Snowflake Streamlit app, and deploy it to obtain the prototype link.
+- The portal requires repository/app links, a 3-5 minute demo video showing CoCo CLI execution, an MVP brief and a PDF deck no larger than 5 MB. The app URL is in README; judge access must be checked separately from the user's authenticated session.
+- Current priority: deploy the focused summary-prompt correction if needed, verify one sequential workflow, record the video, export/submit the final PDF and confirm portal completeness. Do not add new features, run expensive exploratory AI calls or execute the remediation preview.
 - The user has enabled Snowflake CoCo in this workspace and wants to continue the project there. CoCo usage is token-billed for an existing Snowflake account; SQL/warehouse compute is billed separately. Be economical with prompts and warehouse runtime, and do not claim CoCo saves trial credits.
 - Never read, print, or ask the user to share passwords, tokens, or other secrets from `C:\Users\YogeshWagh\.snowflake\connections.toml`. Do not include account-specific connection details in public project files.
 
@@ -36,10 +36,10 @@ Demonstrate an auditable regulatory-change workflow for a fictional AML transact
 - Prefer Snowflake-native SQL, Snowpark Python, Cortex, Dynamic Tables, DMFs, and Streamlit in Snowflake when they serve the demonstrated workflow.
 - Verify current Snowflake product/API syntax in official documentation before adding features. Avoid unverified packages, third-party vector databases, and executing arbitrary LLM-generated SQL.
 - Keep all policy and transaction data synthetic or appropriately licensed. Label illustrative circular text as fictional; never imply demo outputs are production AML advice.
-- Keep the scope solo-buildable and changes small. Do not add Cortex parsing, clones, DMFs, Dynamic Tables, UI, or deployment claims before the core Phase 1 worksheet is validated.
+- Freeze feature scope for submission. Cortex extraction, clone replay and Analyst are in source; ingestion/CDC, persisted policy evidence and production promotion hardening remain limitations, not completed capabilities.
 - The published prototype submission deadline was October 4, 2026, 11:59 PM IST. Treat the date as urgent and verify the current portal/event terms if schedule or requirements matter.
 - Use the user's Snowflake CoCo/Cortex Code CLI workflow where required, but do not spend effort regenerating large amounts of code when a focused local or worksheet check will answer the question.
 
 ## How to Continue
 
-Read the README, decision brief, and Phase 1 SQL before changing code. Pick up from the next unverified step: verify the Snowflake extension session and run the Phase 1 worksheet, resolve any compile/runtime issues in that same slice, and compare the output to the expected metrics above. Then report what was actually tested and proceed to a minimal deployed prototype. If using CoCo in a new session, start with: `Read @.github/prompts/resume-regchange.prompt.md and the linked project files. Continue from the next unverified step; first verify the Snowflake connection, then validate the Phase 1 worksheet. Keep all actions within this repository and ask before any destructive or externally visible action.` If the user supplies a specific next task, prioritize it while preserving these project constraints.
+Read README and the relevant implementation before editing. Continue with final submission preparation, not project initialization. In a new CoCo session use: `Read @.github/prompts/resume-regchange.prompt.md and README. Help verify one sequential demo workflow and prepare submission. Do not reseed, redeploy, change controls, run additional queries or push without explicit approval.` Report local checks separately from actual account execution. Prefer the published README and presentation over ignored local planning documents.

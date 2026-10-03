@@ -2,6 +2,8 @@
 
 A running log of issues encountered, decisions made, and trade-offs chosen during development. Written in plain language for demo prep and judge Q&A.
 
+Current presentation boundary (October 3, 2026): this is a historical engineering log, not a benchmark report. Timing, credit balance and larger-data results below were recorded during development and are not current guarantees. Verify retained query evidence before quoting them. The 47-account demo metric means accounts with transactions in the newly monitored band, not first-time alerted accounts. Policy extraction is session-only; persisted audit records cover backtests and human reviews.
+
 ---
 
 ## Decision 1: Data Scale — 10K vs Production Scale
@@ -11,13 +13,13 @@ A running log of issues encountered, decisions made, and trade-offs chosen durin
 
 ### Why
 - Demo stability: deterministic data means every run produces exactly the same numbers (132 alerts, 200 proposed, etc.)
-- Fast iteration: backtest completes in <1 second on XS warehouse
+- Fast iteration: small fixed data reduces rehearsal cost; latency must be measured, not promised
 - Cost: trial account has $400 budget; keeping data small preserves credits for the entire hackathon
 
 ### Does it scale?
-**Yes.** We tested the backtest query on 500,000 rows (50x the demo) and it completed in under 2 seconds on the same XS warehouse. The query uses `COUNT_IF` and `COUNT(DISTINCT IFF(...))` — these are simple aggregations that Snowflake handles efficiently at any scale.
+Development notes report a 500,000-row experiment; retained query IDs/profile evidence should be checked before treating its timing as a benchmark. The query uses `COUNT_IF` and distinct-account aggregation. Larger volumes require query-profile and cost testing; do not assume linear or guaranteed scaling.
 
-At 500K rows: 6,662 baseline alerts, 10,000 proposed alerts, 3,338 delta, 1,000 accounts, 632 newly alerted. The proportions hold because the data generation formula is the same.
+The historical 500K experiment recorded 6,662 baseline alerts, 10,000 proposed alerts, 3,338 delta, 1,000 proposed-alert accounts and 632 accounts with newly monitored band transactions. The last value is not a first-time-account count; these experimental figures are not the recorded 10K demo fixture.
 
 ### What a production system would look like
 | Aspect | Our demo | Production |
@@ -25,11 +27,11 @@ At 500K rows: 6,662 baseline alerts, 10,000 proposed alerts, 3,338 delta, 1,000 
 | Transaction volume | 10,000 (90 days) | 10M-100M+ per quarter |
 | Accounts | 2,500 | 500K-10M+ |
 | Warehouse size | XS (1 credit/hr) | Medium to Large |
-| Backtest time | <1 second | 5-30 seconds at 100M rows |
+| Backtest time | Measure in the target account | Requires representative benchmarking |
 | Data source | Deterministic SQL generator | Core banking system (real-time or batch) |
 
 ### What to say to judges
-"We use 10K rows for demo stability, but the architecture is the same COUNT_IF aggregation that scales linearly. We tested at 500K rows with no change needed — Snowflake handles it."
+"We use 10K rows for reproducibility. The replay is a parameterized aggregation; production scale needs measured performance and cost tests on representative data."
 
 ---
 
@@ -239,7 +241,7 @@ Created a Semantic View (`REGCHANGE_SEMANTIC`) over all 4 tables with defined fa
 ### Why
 - The hackathon terms give "special consideration" to entries using Snowflake-native features
 - Semantic Views demonstrate governed data access — metrics are defined once, consistently
-- It's a natural extension of the AML compliance use case: a compliance officer asks "how many accounts were newly alerted?" and gets a governed answer
+- It extends the workflow with declared measures such as total transactions and approval count; first-time-alerted-account analysis is not a defined metric in the current Semantic View
 - Shows depth beyond basic SQL + Streamlit
 
 ### What the Semantic View defines
@@ -285,10 +287,10 @@ The first attempt used `Cortex COMPLETE` (generic LLM) to generate SQL — it gu
 The `RUN_THRESHOLD_BACKTEST` procedure now creates a transient Zero-Copy Clone of TRANSACTIONS before running the backtest, queries the clone, and drops it immediately after.
 
 ### Why
-- **Data engineering best practice:** Never run experimental queries on production data
-- **Isolation:** The clone is a point-in-time snapshot — backtest results are guaranteed consistent even if production data is being updated simultaneously
-- **Snowflake-native:** Zero-Copy Clone is a signature Snowflake feature — zero additional storage cost, instant creation
-- **Auditability:** The backtest response now includes `"backtest_isolation": "ZERO_COPY_CLONE"` so audit logs prove the test was isolated
+- **Isolation:** The clone provides a snapshot for the replay without updating source transactions
+- **Concurrency boundary:** The shared clone name can be replaced/dropped by overlapping runs; this demo must run sequentially
+- **Storage boundary:** A clone initially shares underlying storage; compute and retained/changed data may incur costs
+- **Audit boundary:** The response includes `"backtest_isolation": "ZERO_COPY_CLONE"`, but the dropped clone is not a retained snapshot reference proving later reproducibility
 
 ### How it works
 ```sql
@@ -299,7 +301,7 @@ DROP TABLE IF EXISTS TXN_BACKTEST_CLONE;
 ```
 
 ### What to say to judges
-"Every backtest runs on an isolated Zero-Copy Clone of the transaction data. The clone is created instantly with zero storage cost, used for the replay, and dropped immediately after. Production data is never touched — this is how you'd run it in a real bank."
+"The replay calculates against a snapshot and does not update source transactions. This single-user demo drops the clone afterward; per-run naming, failure cleanup and retained snapshot references remain production-hardening work."
 
 ---
 
